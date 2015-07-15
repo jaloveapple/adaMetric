@@ -3,7 +3,8 @@ clear;clc;
 imgDir='../image/';
 addpath('../');
 %%%%%%
-Set_Partition;
+toysize=40;
+Partition;
 %%%%%load different features
 LoadFeatures;
 

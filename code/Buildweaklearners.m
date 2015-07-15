@@ -1,5 +1,7 @@
 %clear;
 
+            
+
 featname={'feat1','feat2'};
 metrics= {'XQDA','kLFDA','svmml','KISSME'};
 num_wLearners=length(featname)*length(metrics);
@@ -11,7 +13,7 @@ np_ratio =10; % The ratio of number of negative and positive pairs. Used in PCCA
 %AlgoOption.func = algoname; % note 'rPCCA' use PCCA function also.
 AlgoOption.npratio = np_ratio; % negative to positive pair ratio
 AlgoOption.beta =3;  % different algorithm have different meaning, refer to PCCA and LFDA paper.
-AlgoOption.d =40; % projection dimension
+%AlgoOption.d =40; % projection dimension
 AlgoOption.epsilon =1e-4;
 AlgoOption.lambda =0;
 AlgoOption.w = [];
@@ -19,7 +21,7 @@ AlgoOption.w = [];
 %AlgoOption.partitionname = partition_name;
 AlgoOption.num_itr=num_itr;
 
-
+%%
 for i=1:length(featname)
     for j=1:length(metrics)
         index=(i-1)*length(metrics)+j;
@@ -30,19 +32,17 @@ for i=1:length(featname)
             case {'feat2'}
                 feat=feat2;
         end
-        traindataPro=feat(idx_train,:);
-        traindataGal=feat(idx_train+num_data,:);
-        traindata=[traindataPro;traindataGal];
-
-        
+        traindata=feat(idx_train,:);
+        testdata =feat(idx_test,:);
         weakLearner{index}.metricName =metrics{j};
+        
         switch  weakLearner{index}.metricName
             case {'XQDA'}
                 
             case {'kLFDA'}
                 
-                
-                
+                %set the kernel fof LFDA
+                AlgoOption.kernel='linear';
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
                 AlgoOption.npratio =0; % npratio is not required.
@@ -53,8 +53,9 @@ for i=1:length(featname)
                 
                 
                 
-                [algo, V]= LFDA(double(traindata) ,AlgoOption);
-                weakLearner{index}.distMat=train_result_LFDA(algo,V);
+                [algo, V]= LFDA(double(traindata),gID(idx_train)' ,AlgoOption);
+                [weakLearner{index}.r,weakLearner{index}.distMat]=train_result_LFDA(mat2cell(algo),mat2cell(traindata),mat2cell(traindata),idx_test_gallery,gID(idx_train));
+                
             case {'svmml'}
                 %%%%%%  do pca
                 [COEFF,pc,latent,tsquare] = princomp(Feature,'econ');
@@ -70,7 +71,7 @@ for i=1:length(featname)
                 
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
-                [algo] = svmml_learn_full_final(train{c},gID(idx_train)',AlgoOption);
+                [algo] = svmml_learn_full_final(double(traindata),gID(idx_train)' ,AlgoOption);
                 weakLearner{index}.distMat=train_result_svmml(algo);
             case {'KISSME'}
                 [COEFF,pc,latent,tsquare] = princomp(Feature,'econ');
@@ -87,14 +88,14 @@ for i=1:length(featname)
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
                 [algo] = kissme(train{c}',ix_pair,y,AlgoOption);
-                weakLearner{index}.distMat=train_result_KISSME(algo);
+                weakLearner{index}.distMat=train_result_KISSME(algo,traindata,testdata,ix_partition,IDs);
         end
             
             
     end
 end
 
-
+%%
 
 
 %%%%%%  training step
