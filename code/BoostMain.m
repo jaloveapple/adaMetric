@@ -2,6 +2,8 @@
 clear;clc;
 imgDir='../image/';
 addpath('../');
+
+addpath(genpath('Assistant Code'));
 %%%%%%
 toysize=40;
 Partition;

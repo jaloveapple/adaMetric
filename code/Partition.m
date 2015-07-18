@@ -5,6 +5,8 @@ num_test=toysize/2;
 idxtemp=randperm(num_person);
 idx_test=idxtemp(1:num_test);
 idx_train=idxtemp(num_test+1:end);
+mpair_ID_train=[unique(idx_train),unique(idx_train)];
+
 
 idx_test=[idx_test,idx_test+num_person];
 idx_train=[idx_train,idx_train+num_person];

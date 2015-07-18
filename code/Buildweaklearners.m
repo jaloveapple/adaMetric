@@ -35,7 +35,7 @@ for i=1:length(featname)
         traindata=feat(idx_train,:);
         testdata =feat(idx_test,:);
         weakLearner{index}.metricName =metrics{j};
-        
+      %%   metric choice
         switch  weakLearner{index}.metricName
             case {'XQDA'}
                 
@@ -58,37 +58,47 @@ for i=1:length(featname)
                 
             case {'svmml'}
                 %%%%%%  do pca
-                [COEFF,pc,latent,tsquare] = princomp(Feature,'econ');
-                pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
-                Feature = pc(:, 1:pcadim);
-                AlgoOption.doPCA = 1;
+%                 [COEFF,pc,latent,tsquare] = princomp(Feature,'econ');
+%                 pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
+%                 Feature = pc(:, 1:pcadim);
+%                 AlgoOption.doPCA = 1;
                 
                 AlgoOption.p = []; % learn full rank projection matrix
                 AlgoOption.lambda1 = 1e-8;
                 AlgoOption.lambda2 = 1e-6;
                 AlgoOption.maxit = 300;
-                AlgoOption.verbose = 1;
+                AlgoOption.verbose = 0;
                 
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
                 [algo] = svmml_learn_full_final(double(traindata),gID(idx_train)' ,AlgoOption);
-                weakLearner{index}.distMat=train_result_svmml(algo);
+                %weakLearner{index}.distMat=train_result_svmml(algo);
             case {'KISSME'}
-                [COEFF,pc,latent,tsquare] = princomp(Feature,'econ');
-%         pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
-                pcadim=45;
-                Feature = pc(:, 1:pcadim);
-                AlgoOption.doPCA = 1;                
+%                 [COEFF,pc,latent,tsquare] = princomp(traindata,'econ');
+%          pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
+                 pcadim=45;
+%                 traindata = pc(:, 1:pcadim);
+                 AlgoOption.doPCA = 1;                
                 
                 
+                traindata=normc_safe(traindata);
+                testdata =normc_safe(testdata);
                 
                 AlgoOption.PCAdim = pcadim;
                 AlgoOption.npratio = 10;
                 AlgoOption.nFold = 20;
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
-                [algo] = kissme(train{c}',ix_pair,y,AlgoOption);
-                weakLearner{index}.distMat=train_result_KISSME(algo,traindata,testdata,ix_partition,IDs);
+                %% make pair
+                
+                [ix_train_pos_pair, ix_train_neg_pair]=GeneratePair(mpair_ID_train);
+                Nneg = min(AlgoOption.npratio* length(ix_train_pos_pair), length(ix_train_neg_pair));
+                ix_pair = [ix_train_pos_pair ; ix_train_neg_pair(1:Nneg,:) ]; % both positive and negative pair index
+                y = [ones(size(ix_train_pos_pair,1), 1); -ones(Nneg,1)]; % annotation of positive and negative pair               
+                
+                %%
+                [algo] = kissme(traindata',ix_pair,y,AlgoOption);
+                weakLearner{index}.distMat=train_result_KISSME(algo,traindata,testdata,idx_test_gallery,IDs);
         end
             
             
