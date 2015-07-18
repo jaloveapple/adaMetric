@@ -5,7 +5,7 @@ addpath('../');
 
 addpath(genpath('Assistant Code'));
 %%%%%%
-toysize=40;
+num_person=632;
 Partition;
 %%%%%load different features
 LoadFeatures;

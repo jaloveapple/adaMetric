@@ -38,6 +38,12 @@ for i=1:length(featname)
       %%   metric choice
         switch  weakLearner{index}.metricName
             case {'XQDA'}
+                AlgoOption.verbose=1;
+                galFea = traindata(1 : num_train, :);
+                probFea = traindata(num_train + 1 : end, :);
+                
+                
+                [W, M] = XQDA(galFea, probFea, (1:num_person/2)', (1:num_person/2)',AlgoOption);
                 
             case {'kLFDA'}
                 
@@ -74,10 +80,10 @@ for i=1:length(featname)
                 [algo] = svmml_learn_full_final(double(traindata),gID(idx_train)' ,AlgoOption);
                 %weakLearner{index}.distMat=train_result_svmml(algo);
             case {'KISSME'}
-%                 [COEFF,pc,latent,tsquare] = princomp(traindata,'econ');
+                 [COEFF,pc,latent,tsquare] = princomp(traindata,'econ');
 %          pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
                  pcadim=45;
-%                 traindata = pc(:, 1:pcadim);
+                 traindata = pc(:, 1:pcadim);
                  AlgoOption.doPCA = 1;                
                 
                 
@@ -98,7 +104,7 @@ for i=1:length(featname)
                 
                 %%
                 [algo] = kissme(traindata',ix_pair,y,AlgoOption);
-                weakLearner{index}.distMat=train_result_KISSME(algo,traindata,testdata,idx_test_gallery,IDs);
+       %         weakLearner{index}.distMat=train_result_KISSME(algo,traindata,testdata,idx_test_gallery,IDs);
         end
             
             
