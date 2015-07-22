@@ -20,7 +20,8 @@ AlgoOption.w = [];
 %AlgoOption.dataname = fname;
 %AlgoOption.partitionname = partition_name;
 AlgoOption.num_itr=num_itr;
-
+tic;
+count=0;
 %%
 for i=1:length(featname)
     for j=1:length(metrics)
@@ -28,22 +29,28 @@ for i=1:length(featname)
         weakLearner{index}.featName   =featname{i}; 
        	switch weakLearner{index}.featName
             case {'feat1'}
-                feat=feat1;
+                feat=double(feat1);
             case {'feat2'}
-                feat=feat2;
+                feat=double(feat2);
         end
         traindata=feat(idx_train,:);
+        Trnpart1=feat(idx_Trnpart1,:);
+        Trnpart2=feat(idx_Trnpart2,:);
         testdata =feat(idx_test,:);
         weakLearner{index}.metricName =metrics{j};
       %%   metric choice
         switch  weakLearner{index}.metricName
             case {'XQDA'}
                 AlgoOption.verbose=1;
-                galFea = traindata(1 : num_train, :);
-                probFea = traindata(num_train + 1 : end, :);
-                
-                
-                [W, M] = XQDA(galFea, probFea, (1:num_person/2)', (1:num_person/2)',AlgoOption);
+                galFea1 = Trnpart1(1 : num_train/2, :);
+                probFea1 = Trnpart1(num_train/2 + 1 : end, :);
+                galFea2 = Trnpart2(1 : num_train/2, :);
+                probFea2 = Trnpart2(num_train/2 + 1 : end, :);
+ 
+                [weakLearner{index}.W1,weakLearner{index}.M1] = XQDA(galFea1, probFea1, (1:num_test/2)', (1:num_test/2)',AlgoOption);
+                [ weakLearner{index}.r1,weakLearner{index}.distMat1] = predict_XQDA( weakLearner{index}.W1,weakLearner{index}.M1,galFea2,probFea2);
+                [weakLearner{index}.W2,weakLearner{index}.M2] = XQDA(galFea2, probFea2, (1:num_test/2)', (1:num_test/2)',AlgoOption);
+                [ weakLearner{index}.r2,weakLearner{index}.distMat2] = predict_XQDA( weakLearner{index}.W2,weakLearner{index}.M2,galFea1,probFea1);               
                 
             case {'kLFDA'}
                 
@@ -57,10 +64,10 @@ for i=1:length(featname)
                 AlgoOption.LocalScalingNeighbor =6; % local scaling affinity matrix parameter.
                 AlgoOption.num_itr= 10;
                 
-                
-                
-                [algo, V]= LFDA(double(traindata),gID(idx_train)' ,AlgoOption);
-                [weakLearner{index}.r,weakLearner{index}.distMat]=train_result_LFDA(mat2cell(algo),mat2cell(traindata),mat2cell(traindata),idx_test_gallery,gID(idx_train));
+                [algo, V]= LFDA(double(Trnpart1),gID(idx_Trnpart1)' ,AlgoOption);
+                [weakLearner{index}.r1,weakLearner{index}.distMat1]=train_result_LFDA(mat2cell(algo),mat2cell(Trnpart1),mat2cell(Trnpart2),idx_test_gallery,gID(idx_Trnpart2));                               
+                [algo, V]= LFDA(double(Trnpart2),gID(idx_Trnpart2)' ,AlgoOption);
+                [weakLearner{index}.r2,weakLearner{index}.distMat2]=train_result_LFDA(mat2cell(algo),mat2cell(Trnpart2),mat2cell(Trnpart1),idx_test_gallery,gID(idx_Trnpart1));
                 
             case {'svmml'}
                 %%%%%%  do pca
@@ -68,6 +75,20 @@ for i=1:length(featname)
 %                 pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
 %                 Feature = pc(:, 1:pcadim);
 %                 AlgoOption.doPCA = 1;
+                if(size(traindata,2)>600)
+                    pcadim=600;
+                    [COEFF,pc,latent,tsquare] = princomp(Trnpart1,'econ');
+ %                   Trnpart1 = pc(:, 1:pcadim);
+                    Trnpart1 = pc;
+                    [COEFF,pc,latent,tsquare] = princomp(Trnpart2,'econ');
+ %                   Trnpart2 = pc(:, 1:pcadim);                    
+                    Trnpart2 = pc;
+                    AlgoOption.doPCA = 1; 
+                    
+                    
+                    
+                    
+                end
                 
                 AlgoOption.p = []; % learn full rank projection matrix
                 AlgoOption.lambda1 = 1e-8;
@@ -77,13 +98,19 @@ for i=1:length(featname)
                 
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
-                [algo] = svmml_learn_full_final(double(traindata),gID(idx_train)' ,AlgoOption);
-                %weakLearner{index}.distMat=train_result_svmml(algo);
-            case {'KISSME'}
-                 [COEFF,pc,latent,tsquare] = princomp(traindata,'econ');
+                algo = svmml_learn_full_final(double(Trnpart1),gID(idx_Trnpart1)' ,AlgoOption);
+                [weakLearner{index}.r1,weakLearner{index}.distMat1] = predict_svmml(mat2cell(algo),mat2cell(Trnpart1),mat2cell(Trnpart2),idx_test_gallery,gID(idx_Trnpart2));
+                algo = svmml_learn_full_final(double(Trnpart2),gID(idx_Trnpart2)' ,AlgoOption);
+                [weakLearner{index}.r2,weakLearner{index}.distMat2] = predict_svmml(mat2cell(algo),mat2cell(Trnpart2),mat2cell(Trnpart1),idx_test_gallery,gID(idx_Trnpart1));               
+                
+            case {'KISSME'}                
 %          pcadim =  sum(cumsum(latent)/sum(latent)<0.95); %80;%
                  pcadim=45;
-                 traindata = pc(:, 1:pcadim);
+
+                [COEFF,pc,latent,tsquare] = princomp(Trnpart1,'econ');
+                Trnpart1 = pc(:, 1:pcadim);
+                [COEFF,pc,latent,tsquare] = princomp(Trnpart2,'econ');
+                Trnpart2 = pc(:, 1:pcadim);                  
                  AlgoOption.doPCA = 1;                
                 
                 
@@ -95,19 +122,33 @@ for i=1:length(featname)
                 AlgoOption.nFold = 20;
                 AlgoOption.dataname = weakLearner{index}.featName;
                 AlgoOption.name=weakLearner{index}.metricName;
-                %% make pair
+                %% make pairs
                 
-                [ix_train_pos_pair, ix_train_neg_pair]=GeneratePair(mpair_ID_train);
-                Nneg = min(AlgoOption.npratio* length(ix_train_pos_pair), length(ix_train_neg_pair));
-                ix_pair = [ix_train_pos_pair ; ix_train_neg_pair(1:Nneg,:) ]; % both positive and negative pair index
-                y = [ones(size(ix_train_pos_pair,1), 1); -ones(Nneg,1)]; % annotation of positive and negative pair               
-                
+                [ix_train_pos_pair1, ix_train_neg_pair1]=GeneratePair(mpair_ID_Trnpart1);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+                Nneg = min(AlgoOption.npratio* length(ix_train_pos_pair1), length(ix_train_neg_pair1));
+                ix_pair1 = [ix_train_pos_pair1 ; ix_train_neg_pair1(1:Nneg,:) ]; % both positive and negative pair index
+                y1 = [ones(size(ix_train_pos_pair1,1), 1); -ones(Nneg,1)]; % annotation of positive and negative pair               
+ 
+                 [ix_train_pos_pair2, ix_train_neg_pair2]=GeneratePair(mpair_ID_Trnpart2);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+                Nneg = min(AlgoOption.npratio* length(ix_train_pos_pair2), length(ix_train_neg_pair2));
+                ix_pair2 = [ix_train_pos_pair2 ; ix_train_neg_pair2(1:Nneg,:) ]; % both positive and negative pair index
+                y2 = [ones(size(ix_train_pos_pair2,1), 1); -ones(Nneg,1)]; % annotation of positive and negative pair                 
                 %%
-                [algo] = kissme(traindata',ix_pair,y,AlgoOption);
-       %         weakLearner{index}.distMat=train_result_KISSME(algo,traindata,testdata,idx_test_gallery,IDs);
+                algo = kissme(Trnpart1',ix_pair1,y1,AlgoOption);
+                [weakLearner{index}.r1,weakLearner{index}.distMat1 ] = predict_kissme(mat2cell(algo),mat2cell(Trnpart2),idx_test_gallery,gID(idx_Trnpart2));
+                algo = kissme(Trnpart2',ix_pair2,y2,AlgoOption);
+                [weakLearner{index}.r2,weakLearner{index}.distMat2 ] = predict_kissme(mat2cell(algo),mat2cell(Trnpart1),idx_test_gallery,gID(idx_Trnpart1));               
+               
         end
-            
-            
+        count=count+1
+        tpoint(index)=toc;
+        if(index==1)
+            eti=toc; 
+        else
+            eti=toc-tpoint(index-1);                    
+        end
+        display(['No.' num2str(index) 'th metric ' weakLearner{index}.metricName ' costs time ' num2str(eti) 's']);
+
     end
 end
 
@@ -117,7 +158,3 @@ end
 %%%%%%  training step
 
 
-%%%%    testing step
-        testdataPro=feat(idx_test,:);
-        testdataGal=feat(idx_test+num_data,:);
-        testdata=[testdataPro;testdataGal];

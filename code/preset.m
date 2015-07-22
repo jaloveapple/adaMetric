@@ -1,7 +1,8 @@
 %%% This is a script of adaboost of metrics
-clear;clc;
+clear;
+clc;
+warning off;
 imgDir='../image/';
-addpath('../');
 
 addpath(genpath('Assistant Code'));
 %%%%%%

@@ -119,16 +119,16 @@ classdef LearnAlgoKISSME < LearnAlgo
             %   KISS Metric Learning CORE ALGORITHM
             %
             
-            tic;
+            %tic;
             % Eqn. (12) - sum of outer products of pairwise differences (similar pairs)
             % normalized by the number of similar pairs.
             covMatches    = SOPD(X,idxa(matches),idxb(matches)) / sum(matches);
             % Eqn. (13) - sum of outer products of pairwise differences (dissimilar pairs)
             % normalized by the number of dissimilar pairs.
             covNonMatches = SOPD(X,idxa(~matches),idxb(~matches)) / sum(~matches);
-            t = toc;
+          %  t = toc;
             
-            tic;
+           % tic;
             % Eqn. (15-16)
             s.M = inv(covMatches) - obj.p.lambda * inv(covNonMatches);   
             if obj.p.pmetric
@@ -136,7 +136,7 @@ classdef LearnAlgoKISSME < LearnAlgo
                 % by clipping the spectrum
                 s.M = validateCovMatrix(s.M);
             end
-            s.t = toc + t;   
+           % s.t = toc + t;   
             
             %
             %   END KISS Metric Learning CORE ALGORITHM

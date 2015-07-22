@@ -17,8 +17,8 @@
 %               this test sample is used as reference sample, while 0
 %               represents such sample is used as probe sample. Nit-by-Nts
 %       IDs: The identity of the samples in the test set. Nts-by-1, where
-%               Nts is the size of test set. Nts-by-1  
-function [R ,Alldist , ixx] = train_result_LFDA(Method, train, test, ix_partition, IDs)
+%               Nts is the size of test set. Nts-by-1
+function [R ,Alldist , ixx] = compute_rank2(Method, train, test, ix_partition, IDs)
 
 
 for k =1:size(ix_partition,1) % calculate the CMC for each random partition.
